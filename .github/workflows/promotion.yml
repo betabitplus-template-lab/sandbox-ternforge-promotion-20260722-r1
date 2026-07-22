@@ -1,0 +1,34 @@
+name: Promotion
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  required:
+    name: promotion / required
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require same-repository dev source
+        env:
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPOSITORY: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          test "$HEAD_REPOSITORY" = "$BASE_REPOSITORY"
+          test "$HEAD_BRANCH" = "dev"
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Require main to be an ancestor of dev
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD

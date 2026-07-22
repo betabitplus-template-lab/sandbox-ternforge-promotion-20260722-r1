@@ -1,0 +1,16 @@
+name: Dev CI
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  required:
+    name: ci / required
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: test -f README.md
