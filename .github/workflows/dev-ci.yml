@@ -1,6 +1,8 @@
 name: Dev CI
 
 on:
+  pull_request:
+    branches: [dev]
   push:
     branches: [dev]
 
@@ -12,5 +14,27 @@ jobs:
     name: ci / required
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - run: test -f README.md
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run full CI or verify sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          ACTOR_ID: ${{ github.actor_id }}
+          EXPECTED_SYNC_ACTOR_ID: "304879260"
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          if test "$EVENT_NAME" = push && test "$ACTOR_ID" = "$EXPECTED_SYNC_ACTOR_ID"; then
+            main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq .object.sha)"
+            second_parent="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${AFTER_SHA}" --jq .parents[1].sha)"
+            before_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${BEFORE_SHA}" --jq .tree.sha)"
+            after_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${AFTER_SHA}" --jq .tree.sha)"
+            test "$AFTER_SHA" = "$main_sha"
+            test "$second_parent" = "$BEFORE_SHA"
+            test "$before_tree" = "$after_tree"
+          else
+            test -f README.md
+          fi
