@@ -12,23 +12,28 @@ jobs:
     name: promotion / required
     runs-on: ubuntu-latest
     steps:
-      - name: Require same-repository dev source
+      - name: Require exact same-repository dev source
         env:
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPOSITORY: ${{ github.repository }}
           HEAD_BRANCH: ${{ github.head_ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
           test "$HEAD_REPOSITORY" = "$BASE_REPOSITORY"
           test "$HEAD_BRANCH" = "dev"
+          current_dev="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev" --jq .object.sha)"
+          test "$PR_HEAD_SHA" = "$current_dev"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Require main to be an ancestor of dev
+      - name: Require promotion merge tree to equal dev tree
         run: |
-          set -euo pipefail
-          git fetch origin main
-          git merge-base --is-ancestor origin/main HEAD
+          git fetch --no-tags origin main
+          merge_tree="$(git merge-tree --write-tree --no-messages origin/main HEAD)"
+          dev_tree="$(git rev-parse 'HEAD^{tree}')"
+          test "$merge_tree" = "$dev_tree"
