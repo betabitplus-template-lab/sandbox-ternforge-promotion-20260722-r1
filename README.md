@@ -9,3 +9,5 @@ Second cycle feature.
 Integration-source check cycle.
 
 App sync positive cycle.
+
+No-sync cycle A.
